@@ -34,47 +34,6 @@ question = st.chat_input(
 )
 
 # Initialize session state for messages and vectorstore
-# if "messages" not in st.session_state:
-#     st.session_state["messages"] = [{"role": "assistant", "content": "Ask something about the article"}]
-
-# if "vectorstore" not in st.session_state:
-#     st.session_state["vectorstore"] = None
-
-# # Display chat messages
-# for msg in st.session_state.messages:
-#     st.chat_message(msg["role"]).write(msg["content"])
-
-# if uploaded_file and st.session_state["vectorstore"] is None:
-#     combined_file_content = ""
-    
-#     # Process each uploaded file
-#     for file in uploaded_file:
-#         if file.type == "application/pdf":
-#             # Extract text from PDF
-#             pdf_reader = PyPDF2.PdfReader(file)
-#             file_content = ""
-#             for page in pdf_reader.pages:
-#                 file_content += page.extract_text()
-#         elif file.type == "text/plain":
-#             # For txt files, just read the content
-#             file_content = file.read().decode("utf-8")
-        
-#         # Combine file content for processing
-#         # combined_file_content += f"\n\n--- Content from {file.name} ---\n\n"
-#         combined_file_content += file_content
-
-#     # Split text into chunks for embedding
-#     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
-#     chunks = text_splitter.split_text(combined_file_content)
-#     documents = [Document(page_content=chunk) for chunk in chunks]
-
-#     # Initialize Chroma vector store and store it in session_state
-#     st.session_state["vectorstore"] = Chroma.from_documents(
-#         documents=documents, 
-#         embedding=AzureOpenAIEmbeddings(model="text-embedding-3-large")
-#     )
-
-# Initialize session state for messages and vectorstore
 if "messages" not in st.session_state:
     st.session_state["messages"] = [{"role": "assistant", "content": "Ask something about the article"}]
 
@@ -93,7 +52,7 @@ if uploaded_file and st.session_state["vectorstore"] is None:
         file_content = ""
         
         if file.type == "application/pdf":
-            # Extract text from PDF
+            # If file typ pdf, extract text from PDF
             pdf_reader = PyPDF2.PdfReader(file)
             for page in pdf_reader.pages:
                 file_content += page.extract_text()
@@ -105,13 +64,14 @@ if uploaded_file and st.session_state["vectorstore"] is None:
         # Create a single Document object for the whole file with metadata
         document = Document(
             page_content=file_content,
-            metadata={"source": file.name}  # Add filename as metadata
+            metadata={"source": file.name} 
         )
+        #Populate new file for each file uploaded to creat 'database' for RAG
         documents.append(document)
 
     # Initialize the RecursiveCharacterTextSplitter
-    chunk_size = 1000  # Example chunk size
-    chunk_overlap = 100  # Example chunk overlap
+    chunk_size = 1000  # chunk size
+    chunk_overlap = 100  # chunk overlap
 
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=chunk_size,
@@ -120,12 +80,7 @@ if uploaded_file and st.session_state["vectorstore"] is None:
 
     # Split the documents into chunks
     chunks = text_splitter.split_documents(documents)
-    
-    # Print the resulting chunks
-    # print(chunks)
-    # print(documents)
-    # print(documents[0].metadata)
-    # print(documents[0].page_content)
+
     # Initialize Chroma vector store and store it in session_state
     st.session_state["vectorstore"] = Chroma.from_documents(
         documents=documents, 
@@ -172,8 +127,6 @@ if question and vectorstore:
 
     formatted_docs = format_docs(retrieved_docs)
     
-    print(formatted_docs)
-    print(type(format_docs))
     # Define the prompt template for the LLM
     template = """
         You are an assistant for question-answering tasks. Use the following pieces of retrieved context to answer the question. 
@@ -187,7 +140,7 @@ if question and vectorstore:
     """
     prompt = PromptTemplate.from_template(template)
 
-    # # Set up the retrieval-augmented generation (RAG) chain
+    # Set up the retrieval-augmented generation (RAG) chain
     rag_chain = (
         {"context": retriever | format_docs, "question": RunnablePassthrough()}
         | prompt
