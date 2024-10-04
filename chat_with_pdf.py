@@ -9,6 +9,9 @@ import base64
 from base64 import b64encode
 from base64 import b64decode
 import PyPDF2
+import langchain_openai
+from langchain_openai import AzureChatOpenAI
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 
 st.title("📝 File Q&A with OpenAI")
@@ -42,28 +45,25 @@ if question and uploaded_file:
         # For txt files, just read the content
             file_content = file.read().decode("utf-8")
 
-    # # Read the content of the uploaded file
-    # file_content_test= base64.b64encode(uploaded_file.read()).decode("utf-8")
-    # print(file_content_test)
-    # file_content = uploaded_file.read().decode("utf-8")
-    # # print(file_content)
-    
-    # client = OpenAI(api_key=environ['OPENAI_API_KEY'])
-
         combined_file_content += f"\n\n--- Content from {file.name} ---\n\n"
         combined_file_content += file_content
-    print(combined_file_content)
 
-    
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=100)
+    chunks = text_splitter.split_text(combined_file_content)
+
     client = AzureOpenAI(
     api_key= environ['AZURE_OPENAI_API_KEY'],
     api_version= "2023-03-15-preview",
     azure_endpoint=environ['AZURE_OPENAI_ENDPOINT'],
     azure_deployment=environ['AZURE_OPENAI_MODEL_DEPLOYMENT'],
-)
+    )
+    relevant_chunks = chunks[:5] 
+
     # Append the user's question to the messages
     st.session_state.messages.append({"role": "user", "content": question})
     st.chat_message("user").write(question)
+    combined_chunk_text = "\n".join(relevant_chunks)
+
 
     with st.chat_message("assistant"):
         stream = client.chat.completions.create(
@@ -74,11 +74,6 @@ if question and uploaded_file:
             ],
             stream=True
         )
-        # response_text = ""
-        # for chunk in stream:
-        #     print(chunk)
-        #     chunk_text = chunk['choices'][0]['delta'].get('content', '')
-
         response = st.write_stream(stream)
 
     # Append the assistant's response to the messages
