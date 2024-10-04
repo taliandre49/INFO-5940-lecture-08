@@ -15,7 +15,7 @@ st.title("📝 File Q&A with OpenAI")
 uploaded_file = st.file_uploader(
     "Upload an article", 
     type=("txt", "pdf"),
-    accept_multiple_files= False
+    accept_multiple_files= True
 )
 
 question = st.chat_input(
@@ -30,15 +30,17 @@ for msg in st.session_state.messages:
     st.chat_message(msg["role"]).write(msg["content"])
 
 if question and uploaded_file:
-    if uploaded_file.type == "application/pdf":
+    combined_file_content = ""
+    for file in uploaded_file:
+        if file.type == "application/pdf":
         # Extract text from PDF
-        pdf_reader = PyPDF2.PdfReader(uploaded_file)
-        file_content = ""
-        for page in pdf_reader.pages:
-            file_content += page.extract_text()
-    elif uploaded_file.type == "text/plain":
+            pdf_reader = PyPDF2.PdfReader(file)
+            file_content = ""
+            for page in pdf_reader.pages:
+                file_content += page.extract_text()
+        elif file.type == "text/plain":
         # For txt files, just read the content
-        file_content = uploaded_file.read().decode("utf-8")
+            file_content = file.read().decode("utf-8")
 
     # # Read the content of the uploaded file
     # file_content_test= base64.b64encode(uploaded_file.read()).decode("utf-8")
@@ -47,6 +49,11 @@ if question and uploaded_file:
     # # print(file_content)
     
     # client = OpenAI(api_key=environ['OPENAI_API_KEY'])
+
+        combined_file_content += f"\n\n--- Content from {file.name} ---\n\n"
+        combined_file_content += file_content
+    print(combined_file_content)
+
     
     client = AzureOpenAI(
     api_key= environ['AZURE_OPENAI_API_KEY'],
@@ -62,11 +69,16 @@ if question and uploaded_file:
         stream = client.chat.completions.create(
             model="gpt-4o",  # Change this to a valid model name
             messages=[
-                {"role": "system", "content": f"Here's the content of the file:\n\n{file_content}"},
+                {"role": "system", "content": f"Here's the content of the file:\n\n{combined_file_content}"},
                 *st.session_state.messages
             ],
             stream=True
         )
+        # response_text = ""
+        # for chunk in stream:
+        #     print(chunk)
+        #     chunk_text = chunk['choices'][0]['delta'].get('content', '')
+
         response = st.write_stream(stream)
 
     # Append the assistant's response to the messages
