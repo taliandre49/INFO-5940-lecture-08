@@ -1,2 +1,2 @@
-git rm --cached ./.env
-./.env
+.env
+docker-compose.yml

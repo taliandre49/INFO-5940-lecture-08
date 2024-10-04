@@ -1,0 +1,3 @@
+pypdf
+llama-index
+PyPDF2
